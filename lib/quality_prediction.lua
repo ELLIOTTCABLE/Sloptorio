@@ -125,6 +125,48 @@ local function quantize_quality_module_effect(effect)
    return math.floor((effect * 1000) + 1e-9) / 1000
 end
 
+local function compute_module_quality_bonus(runtime_values, base_tier_effect, module_quality_level)
+   local quality_multiplier = 1 + (module_quality_level * runtime_values.quality_default_multiplier_base)
+   local effective_tier_effect = quantize_quality_module_effect(base_tier_effect * quality_multiplier)
+   return 4 * effective_tier_effect
+end
+
+local function quality_level_by_name(runtime_values, quality_name, fallback)
+   for _, quality in ipairs(runtime_values.quality_levels or {}) do
+      if quality.name == quality_name then
+         return quality.level
+      end
+   end
+   return fallback
+end
+
+local function build_legendary_module_scenarios(runtime_values)
+   local module_tiers = {
+      { label = "Q1", effect = runtime_values.q1_effect },
+      { label = "Q2", effect = runtime_values.q2_effect },
+      { label = "Q3", effect = runtime_values.q3_effect },
+   }
+   local module_qualities = {
+      { suffix = "U", name = "uncommon", fallback = 1 },
+      { suffix = "R", name = "rare", fallback = 2 },
+      { suffix = "E", name = "epic", fallback = 3 },
+      { suffix = "L", name = "legendary", fallback = 5 },
+   }
+
+   local scenarios = {}
+   for _, module_quality in ipairs(module_qualities) do
+      local module_quality_level = quality_level_by_name(runtime_values, module_quality.name, module_quality.fallback)
+      for _, module_tier in ipairs(module_tiers) do
+         table.insert(scenarios, {
+            label = "4x" .. module_tier.label .. module_quality.suffix,
+            bonus = compute_module_quality_bonus(runtime_values, module_tier.effect, module_quality_level),
+         })
+      end
+   end
+
+   return scenarios
+end
+
 local function display_width(value)
    local _, count = string.gsub(value, "[^\128-\193]", "")
    return count
@@ -214,6 +256,7 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
    local VANILLA_Q2_EFFECT = 0.2
    local VANILLA_Q3_EFFECT = 0.25
    local VANILLA_NORMAL_NEXT_PROBABILITY = 0.1
+   local VANILLA_DEFAULT_MULTIPLIER_BASE = 0.3
    local vanilla_bonus_by_label = {
       none = 0,
       ["4xQ1"] = 4 * VANILLA_Q1_EFFECT,
@@ -221,7 +264,53 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
       ["4xQ3"] = 4 * VANILLA_Q3_EFFECT,
    }
 
-   for i, scenario in ipairs(module_scenarios) do
+   local scenarios = {}
+   for _, scenario in ipairs(module_scenarios) do
+      table.insert(scenarios, scenario)
+   end
+   if stage.max_level == 5 then
+      local quality_scenarios = build_legendary_module_scenarios(runtime_values)
+      for _, scenario in ipairs(quality_scenarios) do
+         table.insert(scenarios, scenario)
+      end
+   end
+
+   local function vanilla_bonus_for_label(label)
+      local base = vanilla_bonus_by_label[label]
+      if base ~= nil then
+         return base
+      end
+
+      local q_tier, q_quality = label:match("^4xQ([123])([UREL]?)$")
+      if q_tier == nil then
+         return 0
+      end
+
+      local base_effect_by_tier = {
+         ["1"] = VANILLA_Q1_EFFECT,
+         ["2"] = VANILLA_Q2_EFFECT,
+         ["3"] = VANILLA_Q3_EFFECT,
+      }
+      local module_quality_level_by_suffix = {
+         [""] = 0,
+         U = 1,
+         R = 2,
+         E = 3,
+         L = 5,
+      }
+
+      local base_effect = base_effect_by_tier[q_tier]
+      local module_quality_level = module_quality_level_by_suffix[q_quality or ""]
+      if base_effect == nil or module_quality_level == nil then
+         return 0
+      end
+
+      local quality_multiplier = 1 + (module_quality_level * VANILLA_DEFAULT_MULTIPLIER_BASE)
+      local effective_tier_effect = quantize_quality_module_effect(base_effect * quality_multiplier)
+      return 4 * effective_tier_effect
+   end
+
+   for i, scenario in ipairs(scenarios) do
       local distribution = M.compute_distribution({
          base_effect_quality = runtime_values.base_effect_quality,
          module_quality_bonus = scenario.bonus,
@@ -233,7 +322,7 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
          max_level = stage.max_level,
       })
 
-      local vanilla_module_bonus = vanilla_bonus_by_label[scenario.label] or 0
+      local vanilla_module_bonus = vanilla_bonus_for_label(scenario.label)
       local vanilla_start_chance = clamp01((VANILLA_BASE_EFFECT + vanilla_module_bonus) * VANILLA_NORMAL_NEXT_PROBABILITY)
       local vanilla_distribution = make_vanilla_distribution(vanilla_start_chance, stage.max_level)
 
