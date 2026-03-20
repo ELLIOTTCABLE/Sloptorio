@@ -316,9 +316,9 @@ function M.build_prediction_matrix_lines(runtime_values)
 
    local vanilla_scenarios = {
       { label = "none", bonus = 0 },
-      { label = "4xQ1", bonus = 4 * 0.01 },
-      { label = "4xQ2", bonus = 4 * 0.02 },
-      { label = "4xQ3", bonus = 4 * 0.025 },
+      { label = "4xQ1", bonus = 4 * 0.1 },
+      { label = "4xQ2", bonus = 4 * 0.2 },
+      { label = "4xQ3", bonus = 4 * 0.25 },
    }
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
