@@ -95,85 +95,203 @@ function M.build_matrix_inputs(runtime_values)
    return module_scenarios, research_stages
 end
 
-local function format_percent(x)
+local function format_percent_cell(x)
    return string.format("%.4f%%", x * 100)
+end
+
+local function format_relative_delta(current, baseline)
+   local epsilon = 1e-12
+   if math.abs(baseline) <= epsilon then
+      if math.abs(current - baseline) <= epsilon then
+         return "0.0%"
+      end
+      return "inf"
+   end
+
+   local relative_change = ((current - baseline) / baseline) * 100
+   return string.format("%+.1f%%", relative_change)
 end
 
 local function format_fixed(x)
    return string.format("%.6f", x)
 end
 
-local function format_distribution_for_stage(distribution, max_level)
-   local parts = {
-      "normal=" .. format_percent(distribution.normal),
-      "fine=" .. format_percent(distribution.fine),
+local function pad_right(value, width)
+   return value .. string.rep(" ", width - #value)
+end
+
+local function build_table_lines_with_widths(headers, rows, widths)
+   local lines = {}
+   local header_cells = {}
+   for i, header in ipairs(headers) do
+      table.insert(header_cells, pad_right(header, widths[i]))
+   end
+   table.insert(lines, table.concat(header_cells, "  "))
+
+   for _, row in ipairs(rows) do
+      local cells = {}
+      for i, cell in ipairs(row) do
+         table.insert(cells, pad_right(cell, widths[i]))
+      end
+      table.insert(lines, table.concat(cells, "  "))
+   end
+
+   return lines
+end
+
+local function build_table_lines(headers, rows)
+   local widths = {}
+   for i, header in ipairs(headers) do
+      widths[i] = #header
+   end
+
+   for _, row in ipairs(rows) do
+      for i, cell in ipairs(row) do
+         if #cell > widths[i] then
+            widths[i] = #cell
+         end
+      end
+   end
+
+   return build_table_lines_with_widths(headers, rows, widths)
+end
+
+local function make_vanilla_distribution(start_chance, max_level)
+   local q = clamp01(start_chance)
+   local out = {
+      normal = 0,
+      uncommon = 0,
+      rare = 0,
+      epic = 0,
+      legendary = 0,
    }
 
-   if max_level >= 3 then
-      table.insert(parts, "uncommon=" .. format_percent(distribution.uncommon))
-      table.insert(parts, "rare=" .. format_percent(distribution.rare))
+   if max_level <= 1 then
+      out.normal = 1
+      return out
    end
 
-   if max_level >= 4 then
-      table.insert(parts, "epic=" .. format_percent(distribution.epic))
+   out.normal = 1 - q
+   out.uncommon = q * 0.9
+
+   if max_level <= 3 then
+      out.rare = q * 0.1
+      return out
    end
 
-   if max_level >= 5 then
-      table.insert(parts, "legendary=" .. format_percent(distribution.legendary))
+   out.rare = q * 0.09
+
+   if max_level <= 4 then
+      out.epic = q * 0.01
+      return out
    end
 
-   return table.concat(parts, ", ")
+   out.epic = q * 0.009
+   out.legendary = q * 0.001
+   return out
+end
+
+local function build_stage_matrix_rows(runtime_values, stage, module_scenarios, vanilla_scenarios)
+   local rows = {}
+
+   for i, scenario in ipairs(module_scenarios) do
+      local distribution = M.compute_distribution({
+         base_effect_quality = runtime_values.base_effect_quality,
+         module_quality_bonus = scenario.bonus,
+         normal_next_probability = runtime_values.normal_next_probability,
+         fine_next_probability = runtime_values.fine_next_probability,
+         uncommon_next_probability = runtime_values.uncommon_next_probability,
+         rare_next_probability = runtime_values.rare_next_probability,
+         epic_next_probability = runtime_values.epic_next_probability,
+         max_level = stage.max_level,
+      })
+
+      local vanilla_start_chance = clamp01(vanilla_scenarios[i].bonus)
+      local vanilla = make_vanilla_distribution(vanilla_start_chance, stage.max_level)
+
+      local row = {
+         scenario.label,
+         format_percent_cell(distribution.normal),
+         format_percent_cell(distribution.fine),
+         stage.max_level >= 3 and format_percent_cell(distribution.uncommon) or "-",
+         stage.max_level >= 3 and format_percent_cell(distribution.rare) or "-",
+         stage.max_level >= 4 and format_percent_cell(distribution.epic) or "-",
+         stage.max_level >= 5 and format_percent_cell(distribution.legendary) or "-",
+         format_relative_delta(distribution.fine, vanilla.normal),
+         stage.max_level >= 3 and format_relative_delta(distribution.uncommon, vanilla.uncommon) or "-",
+         stage.max_level >= 3 and format_relative_delta(distribution.rare, vanilla.rare) or "-",
+         stage.max_level >= 4 and format_relative_delta(distribution.epic, vanilla.epic) or "-",
+         stage.max_level >= 5 and format_relative_delta(distribution.legendary, vanilla.legendary) or "-",
+      }
+
+      table.insert(rows, row)
+   end
+
+   return rows
 end
 
 function M.build_matrix_report_lines(runtime_values)
    local lines = {
-      "=== quality prediction report ===",
-      "configured values:",
-      "base_effect_quality=" .. string.format("%.6f", runtime_values.base_effect_quality),
-      "normal.next_probability=" .. string.format("%.6f", runtime_values.normal_next_probability),
-      "fine.next_probability=" .. string.format("%.6f", runtime_values.fine_next_probability),
-      "uncommon.next_probability=" .. string.format("%.6f", runtime_values.uncommon_next_probability),
-      "rare.next_probability=" .. string.format("%.6f", runtime_values.rare_next_probability),
-      "epic.next_probability=" .. string.format("%.6f", runtime_values.epic_next_probability),
-      "quality-module effect=" .. string.format("%.6f", runtime_values.q1_effect),
-      "quality-module-2 effect=" .. string.format("%.6f", runtime_values.q2_effect),
-      "quality-module-3 effect=" .. string.format("%.6f", runtime_values.q3_effect),
+      "cfg: B=" .. format_fixed(runtime_values.base_effect_quality)
+         .. "  P[n/f/u/r/e]="
+         .. table.concat({
+            format_fixed(runtime_values.normal_next_probability),
+            format_fixed(runtime_values.fine_next_probability),
+            format_fixed(runtime_values.uncommon_next_probability),
+            format_fixed(runtime_values.rare_next_probability),
+            format_fixed(runtime_values.epic_next_probability),
+         }, "/")
+         .. "  Q[1/2/3]="
+         .. table.concat({
+            format_fixed(runtime_values.q1_effect),
+            format_fixed(runtime_values.q2_effect),
+            format_fixed(runtime_values.q3_effect),
+         }, "/"),
+      "matrix values are percentages; Δv* are relative vs vanilla (fine↔vanilla normal)",
+   }
+
+   local vanilla_scenarios = {
+      { label = "none", bonus = 0 },
+      { label = "4xQ1", bonus = 4 * 0.01 },
+      { label = "4xQ2", bonus = 4 * 0.02 },
+      { label = "4xQ3", bonus = 4 * 0.025 },
    }
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
+   local headers = { "mod", "N", "F", "U", "R", "E", "L", "ΔvF", "ΔvU", "ΔvR", "ΔvE", "ΔvL" }
+   local all_rows = {}
+   local rows_by_stage = {}
+
    for _, stage in ipairs(research_stages) do
-      table.insert(lines, "--- max_level=" .. tostring(stage.max_level) .. " (" .. stage.label .. ") ---")
-
-      for _, scenario in ipairs(module_scenarios) do
-         local distribution = M.compute_distribution({
-            base_effect_quality = runtime_values.base_effect_quality,
-            module_quality_bonus = scenario.bonus,
-            normal_next_probability = runtime_values.normal_next_probability,
-            fine_next_probability = runtime_values.fine_next_probability,
-            uncommon_next_probability = runtime_values.uncommon_next_probability,
-            rare_next_probability = runtime_values.rare_next_probability,
-            epic_next_probability = runtime_values.epic_next_probability,
-            max_level = stage.max_level,
-         })
-
-         local total =
-            distribution.normal
-            + distribution.fine
-            + distribution.uncommon
-            + distribution.rare
-            + distribution.epic
-            + distribution.legendary
-
-         table.insert(
-            lines,
-            scenario.label
-            .. ": " .. format_distribution_for_stage(distribution, stage.max_level)
-            .. ", total=" .. format_percent(total)
-         )
+      local stage_rows = build_stage_matrix_rows(runtime_values, stage, module_scenarios, vanilla_scenarios)
+      rows_by_stage[#rows_by_stage + 1] = {
+         title = "[max=" .. tostring(stage.max_level) .. "] " .. stage.label,
+         rows = stage_rows,
+      }
+      for _, row in ipairs(stage_rows) do
+         all_rows[#all_rows + 1] = row
       end
    end
 
-   table.insert(lines, "=== end quality prediction report ===")
+   local widths = {}
+   for i, header in ipairs(headers) do
+      widths[i] = #header
+   end
+   for _, row in ipairs(all_rows) do
+      for i, cell in ipairs(row) do
+         if #cell > widths[i] then
+            widths[i] = #cell
+         end
+      end
+   end
+
+   for _, stage in ipairs(rows_by_stage) do
+      local table_lines = build_table_lines_with_widths(headers, stage.rows, widths)
+      table_lines[1] = table_lines[1] .. "  -- " .. stage.title
+      for _, line in ipairs(table_lines) do
+         table.insert(lines, line)
+      end
+   end
 
    local cap_lines = M.build_module_cap_report_lines(runtime_values)
    for _, line in ipairs(cap_lines) do
@@ -191,14 +309,7 @@ local function compute_start_chance(runtime_values, module_tier_effect, module_q
 end
 
 function M.build_module_cap_report_lines(runtime_values)
-   local lines = {
-      "=== module cap analysis (tier x quality-level) ===",
-      "notes:",
-      "quality levels use QualityPrototype.level values",
-      "module tiers are Q1/Q2/Q3 module prototypes",
-      "cap criterion: marginal start-chance gain <= 0.000001",
-      "assumed per-level module effect bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
-   }
+   local lines = {}
 
    local levels = runtime_values.quality_levels
 
@@ -210,55 +321,54 @@ function M.build_module_cap_report_lines(runtime_values)
 
    local epsilon = 0.000001
    local start_chance = {}
-
-   table.insert(lines, "start chance matrix (fully unlocked context):")
+   local rows = {}
    for i, level in ipairs(levels) do
       start_chance[i] = {}
-      local row_parts = {
-         level.name .. "(level=" .. tostring(level.level) .. ")",
+      local row = {
+         level.name .. "(" .. tostring(level.level) .. ")",
       }
 
       for j, tier in ipairs(tiers) do
          local chance = compute_start_chance(runtime_values, tier.effect, level.level)
          start_chance[i][j] = chance
-         table.insert(row_parts, tier.name .. "=" .. format_percent(chance))
+         table.insert(row, format_percent_cell(chance))
       end
 
-      table.insert(lines, table.concat(row_parts, ", "))
-   end
-
-   table.insert(lines, "tier-up marginal gains at each quality level:")
-   for i, level in ipairs(levels) do
       local gain_q1_to_q2 = start_chance[i][2] - start_chance[i][1]
       local gain_q2_to_q3 = start_chance[i][3] - start_chance[i][2]
 
-      table.insert(
-         lines,
-         level.name
-         .. ": Q1->Q2=" .. format_percent(gain_q1_to_q2)
-         .. ((gain_q1_to_q2 <= epsilon) and " (capped)" or "")
-         .. ", Q2->Q3=" .. format_percent(gain_q2_to_q3)
-         .. ((gain_q2_to_q3 <= epsilon) and " (capped)" or "")
-      )
-   end
+      table.insert(row, format_percent_cell(gain_q1_to_q2) .. ((gain_q1_to_q2 <= epsilon) and "*" or ""))
+      table.insert(row, format_percent_cell(gain_q2_to_q3) .. ((gain_q2_to_q3 <= epsilon) and "*" or ""))
 
-   table.insert(lines, "quality-level-up marginal gains at each module tier:")
-   for j, tier in ipairs(tiers) do
-      for i = 1, #levels - 1 do
-         local from_level = levels[i]
-         local to_level = levels[i + 1]
-         local gain = start_chance[i + 1][j] - start_chance[i][j]
-         table.insert(
-            lines,
-            tier.name
-            .. " " .. from_level.name .. "->" .. to_level.name
-            .. "=" .. format_percent(gain)
-            .. ((gain <= epsilon) and " (capped)" or "")
-         )
+      if i == 1 then
+         table.insert(row, "-")
+         table.insert(row, "-")
+         table.insert(row, "-")
+      else
+         local previous_level = levels[i - 1]
+         for j = 1, #tiers do
+            local gain = start_chance[i][j] - start_chance[i - 1][j]
+            local marker = ""
+            if previous_level.level == level.level then
+               marker = "="
+            elseif gain <= epsilon then
+               marker = "*"
+            end
+            table.insert(row, format_percent_cell(gain) .. marker)
+         end
       end
+
+      table.insert(rows, row)
    end
 
-   table.insert(lines, "=== end module cap analysis ===")
+   local table_lines = build_table_lines({ "lvl", "Q1", "Q2", "Q3", "Δ12", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" }, rows)
+   table_lines[1] = table_lines[1]
+      .. "  -- cap analysis; bonus/level=" .. format_fixed(runtime_values.module_quality_per_level_bonus)
+      .. "  (=same prototype level, *=capped)"
+   for _, line in ipairs(table_lines) do
+      table.insert(lines, line)
+   end
+
    return lines
 end
 
