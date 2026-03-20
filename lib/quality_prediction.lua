@@ -121,6 +121,10 @@ local function format_fixed(x)
    return string.format("%.6f", x)
 end
 
+local function quantize_quality_module_effect(effect)
+   return math.floor((effect * 1000) + 1e-9) / 1000
+end
+
 local function display_width(value)
    local _, count = string.gsub(value, "[^\128-\193]", "")
    return count
@@ -257,16 +261,21 @@ end
 function M.build_matrix_report_lines(runtime_values)
    local lines = {}
 
+   table.insert(lines, "=== config ===")
    local config_lines = M.build_config_report_lines(runtime_values)
    for _, line in ipairs(config_lines) do
       table.insert(lines, line)
    end
 
+   table.insert(lines, "")
+   table.insert(lines, "=== matrix ===")
    local matrix_lines = M.build_prediction_matrix_lines(runtime_values)
    for _, line in ipairs(matrix_lines) do
       table.insert(lines, line)
    end
 
+   table.insert(lines, "")
+   table.insert(lines, "=== cap analysis ===")
    local cap_lines = M.build_module_cap_report_lines(runtime_values)
    for _, line in ipairs(cap_lines) do
       table.insert(lines, line)
@@ -305,7 +314,8 @@ function M.build_config_report_lines(runtime_values)
          format_fixed(runtime_values.module_quality_base_step),
          format_fixed(runtime_values.module_quality_exponent),
       }, "/")
-      .. "  per-level-bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
+      .. "  quality-default-multiplier-base=" .. format_fixed(runtime_values.quality_default_multiplier_base),
+      "meta-quality model: quality modules rounded down to 0.1%",
       "q-base[1/2/3]="
       .. table.concat({
          format_fixed(runtime_values.q1_base_effect),
@@ -361,19 +371,25 @@ function M.build_prediction_matrix_lines(runtime_values)
    end
 
    for _, stage in ipairs(rows_by_stage) do
+      table.insert(lines, stage.title)
       local table_lines = build_table_lines_with_widths(headers, stage.rows, widths)
-      table_lines[1] = table_lines[1] .. "  -- " .. stage.title
       for _, line in ipairs(table_lines) do
          table.insert(lines, line)
       end
+      table.insert(lines, "")
+   end
+
+   if lines[#lines] == "" then
+      table.remove(lines)
    end
 
    return lines
 end
 
 local function compute_start_chance(runtime_values, module_tier_effect, module_quality_level)
-   local quality_multiplier = 1 + (module_quality_level * runtime_values.module_quality_per_level_bonus)
-   local total_module_bonus = 4 * module_tier_effect * quality_multiplier
+   local quality_multiplier = 1 + (module_quality_level * runtime_values.quality_default_multiplier_base)
+   local effective_tier_effect = quantize_quality_module_effect(module_tier_effect * quality_multiplier)
+   local total_module_bonus = 4 * effective_tier_effect
    local combined = runtime_values.base_effect_quality + total_module_bonus
    return clamp01(combined * runtime_values.normal_next_probability), total_module_bonus
 end
@@ -443,9 +459,9 @@ function M.build_module_cap_report_lines(runtime_values)
 
    local table_lines = build_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" },
       rows)
-   table_lines[1] = table_lines[1]
-       .. "  -- cap analysis; bonus/level=" .. format_fixed(runtime_values.module_quality_per_level_bonus)
-       .. "  (=same prototype level, *=capped)"
+   table.insert(lines,
+      "bonus/level(default_multiplier)=" .. format_fixed(runtime_values.quality_default_multiplier_base)
+      .. "  (quality modules rounded down to 0.1%; =same prototype level, *=capped)")
    for _, line in ipairs(table_lines) do
       table.insert(lines, line)
    end

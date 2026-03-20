@@ -8,6 +8,11 @@ data.raw.quality.epic.next_probability = settings.startup["sloptorio-epic-next-p
 local MODULE_QUALITY_SCALE = settings.startup["sloptorio-module-quality-scale"].value
 local MODULE_QUALITY_BASE_STEP = settings.startup["sloptorio-module-quality-base-step"].value
 local MODULE_QUALITY_EXPONENT = settings.startup["sloptorio-module-quality-exponent"].value
+local QUALITY_DEFAULT_MULTIPLIER_BASE = settings.startup["sloptorio-quality-default-multiplier-base"].value
+
+for _, quality in pairs(data.raw.quality) do
+   quality.default_multiplier = 1 + QUALITY_DEFAULT_MULTIPLIER_BASE * (quality.level or 0)
+end
 
 local function scale_quality_effect(effect)
    if effect <= 0 then

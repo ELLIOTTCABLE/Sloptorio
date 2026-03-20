@@ -52,11 +52,11 @@ local function read_runtime_values()
    local module_quality_exponent = settings.startup["sloptorio-module-quality-exponent"].value
 
    local quality_levels = {
-      { name = "normal", level = (normal and normal.level) or 0 },
-      { name = "fine", level = (fine and fine.level) or 0 },
+      { name = "normal",   level = (normal and normal.level) or 0 },
+      { name = "fine",     level = (fine and fine.level) or 0 },
       { name = "uncommon", level = (uncommon and uncommon.level) or 1 },
-      { name = "rare", level = (rare and rare.level) or 2 },
-      { name = "epic", level = (epic and epic.level) or 3 },
+      { name = "rare",     level = (rare and rare.level) or 2 },
+      { name = "epic",     level = (epic and epic.level) or 3 },
    }
    local legendary = prototypes.quality.legendary
    table.insert(quality_levels, { name = "legendary", level = (legendary and legendary.level) or 5 })
@@ -78,13 +78,16 @@ local function read_runtime_values()
       q1_base_effect = defaults.q1_base_effect,
       q2_base_effect = defaults.q2_base_effect,
       q3_base_effect = defaults.q3_base_effect,
-      q1_expected_effect = scale_quality_effect(defaults.q1_base_effect, module_quality_base_step, module_quality_exponent, module_quality_scale),
-      q2_expected_effect = scale_quality_effect(defaults.q2_base_effect, module_quality_base_step, module_quality_exponent, module_quality_scale),
-      q3_expected_effect = scale_quality_effect(defaults.q3_base_effect, module_quality_base_step, module_quality_exponent, module_quality_scale),
+      q1_expected_effect = scale_quality_effect(defaults.q1_base_effect, module_quality_base_step,
+         module_quality_exponent, module_quality_scale),
+      q2_expected_effect = scale_quality_effect(defaults.q2_base_effect, module_quality_base_step,
+         module_quality_exponent, module_quality_scale),
+      q3_expected_effect = scale_quality_effect(defaults.q3_base_effect, module_quality_base_step,
+         module_quality_exponent, module_quality_scale),
       module_quality_scale = module_quality_scale,
       module_quality_base_step = module_quality_base_step,
       module_quality_exponent = module_quality_exponent,
-      module_quality_per_level_bonus = settings.startup["sloptorio-module-quality-per-level-bonus"].value,
+      quality_default_multiplier_base = settings.startup["sloptorio-quality-default-multiplier-base"].value,
       quality_levels = quality_levels,
    }
 end

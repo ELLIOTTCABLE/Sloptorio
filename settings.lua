@@ -84,9 +84,9 @@ data:extend({
    },
    {
       type = "double-setting",
-      name = "sloptorio-module-quality-per-level-bonus",
+      name = "sloptorio-quality-default-multiplier-base",
       setting_type = "startup",
-      default_value = defaults.module_quality_per_level_bonus,
+      default_value = defaults.quality_default_multiplier_base,
       minimum_value = 0,
       maximum_value = 10,
       order = "j",

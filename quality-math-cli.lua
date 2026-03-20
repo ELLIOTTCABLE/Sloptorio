@@ -66,7 +66,7 @@ local function parse_args(argv)
       q1Effect = num("q1Effect", scale_quality_effect(defaults.q1_base_effect)),
       q2Effect = num("q2Effect", scale_quality_effect(defaults.q2_base_effect)),
       q3Effect = num("q3Effect", scale_quality_effect(defaults.q3_base_effect)),
-      moduleQualityPerLevelBonus = num("moduleQualityPerLevelBonus", defaults.module_quality_per_level_bonus),
+      qualityDefaultMultiplierBase = num("qualityDefaultMultiplierBase", defaults.quality_default_multiplier_base),
       targetNormal = args.targetNormal and num("targetNormal", 0.25) or nil,
    }
 
@@ -101,7 +101,7 @@ local function main()
       module_quality_scale = defaults.module_quality_scale,
       module_quality_base_step = defaults.module_quality_base_step,
       module_quality_exponent = defaults.module_quality_exponent,
-      module_quality_per_level_bonus = cfg.moduleQualityPerLevelBonus,
+      quality_default_multiplier_base = cfg.qualityDefaultMultiplierBase,
       quality_levels = defaults.quality_levels,
    }
 
