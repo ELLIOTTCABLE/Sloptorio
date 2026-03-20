@@ -184,8 +184,7 @@ function M.build_matrix_report_lines(runtime_values)
 end
 
 local function compute_start_chance(runtime_values, module_tier_effect, module_quality_level)
-   local quality_per_level_bonus = runtime_values.module_quality_per_level_bonus or 0.30
-   local quality_multiplier = 1 + (module_quality_level * quality_per_level_bonus)
+   local quality_multiplier = 1 + (module_quality_level * runtime_values.module_quality_per_level_bonus)
    local total_module_bonus = 4 * module_tier_effect * quality_multiplier
    local combined = runtime_values.base_effect_quality + total_module_bonus
    return clamp01(combined * runtime_values.normal_next_probability), total_module_bonus
@@ -198,17 +197,10 @@ function M.build_module_cap_report_lines(runtime_values)
       "quality levels use QualityPrototype.level values",
       "module tiers are Q1/Q2/Q3 module prototypes",
       "cap criterion: marginal start-chance gain <= 0.000001",
-      "assumed per-level module effect bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus or 0.30),
+      "assumed per-level module effect bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
    }
 
-   local levels = runtime_values.quality_levels or {
-      { name = "normal", level = 0 },
-      { name = "fine", level = 0 },
-      { name = "uncommon", level = 1 },
-      { name = "rare", level = 2 },
-      { name = "epic", level = 3 },
-      { name = "legendary", level = 4 },
-   }
+   local levels = runtime_values.quality_levels
 
    local tiers = {
       { name = "Q1", effect = runtime_values.q1_effect },

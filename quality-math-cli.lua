@@ -7,6 +7,17 @@ package.path = table.concat({
 }, ";")
 
 local quality_prediction = require("lib.quality_prediction")
+local defaults = require("lib.tuning_defaults").values
+
+local function scale_quality_effect(effect)
+   if effect <= 0 then
+      return effect
+   end
+
+   local normalized_steps = effect / defaults.module_quality_base_step
+   local curved_steps = normalized_steps ^ defaults.module_quality_exponent
+   return defaults.module_quality_base_step * curved_steps * defaults.module_quality_scale
+end
 
 local function clamp01(x)
    if x < 0 then
@@ -46,16 +57,16 @@ local function parse_args(argv)
    end
 
    local cfg = {
-      baseEffectQuality = num("baseEffectQuality", 7.5),
-      normalNextProbability = num("normalNextProbability", 0.10),
-      fineNextProbability = num("fineNextProbability", 0.10),
-      uncommonNextProbability = num("uncommonNextProbability", 0.10),
-      rareNextProbability = num("rareNextProbability", 0.10),
-      epicNextProbability = num("epicNextProbability", 0.10),
-      q1Effect = num("q1Effect", 0.01),
-      q2Effect = num("q2Effect", 0.02),
-      q3Effect = num("q3Effect", 0.025),
-      moduleQualityPerLevelBonus = num("moduleQualityPerLevelBonus", 0.30),
+      baseEffectQuality = num("baseEffectQuality", defaults.base_effect_quality),
+      normalNextProbability = num("normalNextProbability", defaults.normal_next_probability),
+      fineNextProbability = num("fineNextProbability", defaults.fine_next_probability),
+      uncommonNextProbability = num("uncommonNextProbability", defaults.uncommon_next_probability),
+      rareNextProbability = num("rareNextProbability", defaults.rare_next_probability),
+      epicNextProbability = num("epicNextProbability", defaults.epic_next_probability),
+      q1Effect = num("q1Effect", scale_quality_effect(defaults.q1_base_effect)),
+      q2Effect = num("q2Effect", scale_quality_effect(defaults.q2_base_effect)),
+      q3Effect = num("q3Effect", scale_quality_effect(defaults.q3_base_effect)),
+      moduleQualityPerLevelBonus = num("moduleQualityPerLevelBonus", defaults.module_quality_per_level_bonus),
       targetNormal = args.targetNormal and num("targetNormal", 0.25) or nil,
    }
 
@@ -82,14 +93,7 @@ local function main()
       q2_effect = cfg.q2Effect,
       q3_effect = cfg.q3Effect,
       module_quality_per_level_bonus = cfg.moduleQualityPerLevelBonus,
-      quality_levels = {
-         { name = "normal", level = 0 },
-         { name = "fine", level = 0 },
-         { name = "uncommon", level = 1 },
-         { name = "rare", level = 2 },
-         { name = "epic", level = 3 },
-         { name = "legendary", level = 5 },
-      },
+      quality_levels = defaults.quality_levels,
    }
 
    local lines = quality_prediction.build_matrix_report_lines(runtime_values)

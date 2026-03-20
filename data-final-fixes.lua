@@ -1,13 +1,13 @@
 data.raw.quality.normal.next = "fine"
-data.raw.quality.normal.next_probability = 0.1
-data.raw.quality.fine.next_probability = 0.1
-data.raw.quality.uncommon.next_probability = 0.1
-data.raw.quality.rare.next_probability = 0.1
-data.raw.quality.epic.next_probability = 0.1
+data.raw.quality.normal.next_probability = settings.startup["sloptorio-normal-next-probability"].value
+data.raw.quality.fine.next_probability = settings.startup["sloptorio-fine-next-probability"].value
+data.raw.quality.uncommon.next_probability = settings.startup["sloptorio-uncommon-next-probability"].value
+data.raw.quality.rare.next_probability = settings.startup["sloptorio-rare-next-probability"].value
+data.raw.quality.epic.next_probability = settings.startup["sloptorio-epic-next-probability"].value
 
-local MODULE_QUALITY_SCALE = 1.0
-local MODULE_QUALITY_BASE_STEP = 0.01
-local MODULE_QUALITY_EXPONENT = 1.25
+local MODULE_QUALITY_SCALE = settings.startup["sloptorio-module-quality-scale"].value
+local MODULE_QUALITY_BASE_STEP = settings.startup["sloptorio-module-quality-base-step"].value
+local MODULE_QUALITY_EXPONENT = settings.startup["sloptorio-module-quality-exponent"].value
 
 local function scale_quality_effect(effect)
    if effect <= 0 then
@@ -37,6 +37,6 @@ for _, type in pairs({
       if not entity.effect_receiver.base_effect then
          entity.effect_receiver.base_effect = {}
       end
-      entity.effect_receiver.base_effect.quality = 7.5
+      entity.effect_receiver.base_effect.quality = settings.startup["sloptorio-base-effect-quality"].value
    end
 end

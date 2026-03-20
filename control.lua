@@ -48,7 +48,7 @@ local function read_runtime_values()
       q1_effect = (q1 and q1.module_effects and q1.module_effects.quality) or 0,
       q2_effect = (q2 and q2.module_effects and q2.module_effects.quality) or 0,
       q3_effect = (q3 and q3.module_effects and q3.module_effects.quality) or 0,
-      module_quality_per_level_bonus = 0.30,
+      module_quality_per_level_bonus = settings.startup["sloptorio-module-quality-per-level-bonus"].value,
       quality_levels = quality_levels,
    }
 end
