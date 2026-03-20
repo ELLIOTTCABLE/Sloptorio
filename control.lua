@@ -1,5 +1,6 @@
 local quality_prediction = require("lib.quality_prediction")
 local defaults = require("lib.tuning_defaults").values
+local shared = require("lib.shared").values
 
 local function scale_quality_effect(effect, base_step, exponent, scale)
    if effect <= 0 then
@@ -75,14 +76,14 @@ local function read_runtime_values()
       q1_effect = q1_val,
       q2_effect = q2_val,
       q3_effect = q3_val,
-      q1_base_effect = defaults.q1_base_effect,
-      q2_base_effect = defaults.q2_base_effect,
-      q3_base_effect = defaults.q3_base_effect,
-      q1_expected_effect = scale_quality_effect(defaults.q1_base_effect, module_quality_base_step,
+      q1_base_effect = shared.q1_base_effect,
+      q2_base_effect = shared.q2_base_effect,
+      q3_base_effect = shared.q3_base_effect,
+      q1_expected_effect = scale_quality_effect(shared.q1_base_effect, module_quality_base_step,
          module_quality_exponent, module_quality_scale),
-      q2_expected_effect = scale_quality_effect(defaults.q2_base_effect, module_quality_base_step,
+      q2_expected_effect = scale_quality_effect(shared.q2_base_effect, module_quality_base_step,
          module_quality_exponent, module_quality_scale),
-      q3_expected_effect = scale_quality_effect(defaults.q3_base_effect, module_quality_base_step,
+      q3_expected_effect = scale_quality_effect(shared.q3_base_effect, module_quality_base_step,
          module_quality_exponent, module_quality_scale),
       module_quality_scale = module_quality_scale,
       module_quality_base_step = module_quality_base_step,

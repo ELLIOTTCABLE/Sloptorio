@@ -147,9 +147,9 @@ local function build_legendary_module_scenarios(runtime_values)
       { label = "Q3", effect = runtime_values.q3_effect },
    }
    local module_qualities = {
-      { suffix = "U", name = "uncommon", fallback = 1 },
-      { suffix = "R", name = "rare", fallback = 2 },
-      { suffix = "E", name = "epic", fallback = 3 },
+      { suffix = "U", name = "uncommon",  fallback = 1 },
+      { suffix = "R", name = "rare",      fallback = 2 },
+      { suffix = "E", name = "epic",      fallback = 3 },
       { suffix = "L", name = "legendary", fallback = 5 },
    }
 

@@ -8,6 +8,7 @@ package.path = table.concat({
 
 local quality_prediction = require("lib.quality_prediction")
 local defaults = require("lib.tuning_defaults").values
+local shared = require("lib.shared").values
 
 local function scale_quality_effect(effect)
    if effect <= 0 then
@@ -63,9 +64,9 @@ local function parse_args(argv)
       uncommonNextProbability = num("uncommonNextProbability", defaults.uncommon_next_probability),
       rareNextProbability = num("rareNextProbability", defaults.rare_next_probability),
       epicNextProbability = num("epicNextProbability", defaults.epic_next_probability),
-      q1Effect = num("q1Effect", scale_quality_effect(defaults.q1_base_effect)),
-      q2Effect = num("q2Effect", scale_quality_effect(defaults.q2_base_effect)),
-      q3Effect = num("q3Effect", scale_quality_effect(defaults.q3_base_effect)),
+      q1Effect = num("q1Effect", scale_quality_effect(shared.q1_base_effect)),
+      q2Effect = num("q2Effect", scale_quality_effect(shared.q2_base_effect)),
+      q3Effect = num("q3Effect", scale_quality_effect(shared.q3_base_effect)),
       qualityDefaultMultiplierBase = num("qualityDefaultMultiplierBase", defaults.quality_default_multiplier_base),
       targetNormal = args.targetNormal and num("targetNormal", 0.25) or nil,
    }
@@ -92,17 +93,17 @@ local function main()
       q1_effect = cfg.q1Effect,
       q2_effect = cfg.q2Effect,
       q3_effect = cfg.q3Effect,
-      q1_base_effect = defaults.q1_base_effect,
-      q2_base_effect = defaults.q2_base_effect,
-      q3_base_effect = defaults.q3_base_effect,
-      q1_expected_effect = scale_quality_effect(defaults.q1_base_effect),
-      q2_expected_effect = scale_quality_effect(defaults.q2_base_effect),
-      q3_expected_effect = scale_quality_effect(defaults.q3_base_effect),
+      q1_base_effect = shared.q1_base_effect,
+      q2_base_effect = shared.q2_base_effect,
+      q3_base_effect = shared.q3_base_effect,
+      q1_expected_effect = scale_quality_effect(shared.q1_base_effect),
+      q2_expected_effect = scale_quality_effect(shared.q2_base_effect),
+      q3_expected_effect = scale_quality_effect(shared.q3_base_effect),
       module_quality_scale = defaults.module_quality_scale,
       module_quality_base_step = defaults.module_quality_base_step,
       module_quality_exponent = defaults.module_quality_exponent,
       quality_default_multiplier_base = cfg.qualityDefaultMultiplierBase,
-      quality_levels = defaults.quality_levels,
+      quality_levels = shared.quality_levels,
    }
 
    local lines = quality_prediction.build_matrix_report_lines(runtime_values)
