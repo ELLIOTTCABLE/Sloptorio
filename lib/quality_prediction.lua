@@ -99,6 +99,10 @@ local function format_percent_cell(x)
    return string.format("%.4f%%", x * 100)
 end
 
+local function format_delta_cell(x)
+   return string.format("%.1f%%", x * 100)
+end
+
 local function format_relative_delta(current, baseline)
    local epsilon = 1e-12
    if math.abs(baseline) <= epsilon then
@@ -116,8 +120,13 @@ local function format_fixed(x)
    return string.format("%.6f", x)
 end
 
+local function display_width(value)
+   local _, count = string.gsub(value, "[^\128-\193]", "")
+   return count
+end
+
 local function pad_right(value, width)
-   return value .. string.rep(" ", width - #value)
+   return value .. string.rep(" ", width - display_width(value))
 end
 
 local function build_table_lines_with_widths(headers, rows, widths)
@@ -142,13 +151,14 @@ end
 local function build_table_lines(headers, rows)
    local widths = {}
    for i, header in ipairs(headers) do
-      widths[i] = #header
+      widths[i] = display_width(header)
    end
 
    for _, row in ipairs(rows) do
       for i, cell in ipairs(row) do
-         if #cell > widths[i] then
-            widths[i] = #cell
+         local cell_width = display_width(cell)
+         if cell_width > widths[i] then
+            widths[i] = cell_width
          end
       end
    end
@@ -213,14 +223,14 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios, 
          scenario.label,
          format_percent_cell(distribution.normal),
          format_percent_cell(distribution.fine),
-         stage.max_level >= 3 and format_percent_cell(distribution.uncommon) or "-",
-         stage.max_level >= 3 and format_percent_cell(distribution.rare) or "-",
-         stage.max_level >= 4 and format_percent_cell(distribution.epic) or "-",
-         stage.max_level >= 5 and format_percent_cell(distribution.legendary) or "-",
          format_relative_delta(distribution.fine, vanilla.normal),
+         stage.max_level >= 3 and format_percent_cell(distribution.uncommon) or "-",
          stage.max_level >= 3 and format_relative_delta(distribution.uncommon, vanilla.uncommon) or "-",
+         stage.max_level >= 3 and format_percent_cell(distribution.rare) or "-",
          stage.max_level >= 3 and format_relative_delta(distribution.rare, vanilla.rare) or "-",
+         stage.max_level >= 4 and format_percent_cell(distribution.epic) or "-",
          stage.max_level >= 4 and format_relative_delta(distribution.epic, vanilla.epic) or "-",
+         stage.max_level >= 5 and format_percent_cell(distribution.legendary) or "-",
          stage.max_level >= 5 and format_relative_delta(distribution.legendary, vanilla.legendary) or "-",
       }
 
@@ -231,7 +241,32 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios, 
 end
 
 function M.build_matrix_report_lines(runtime_values)
-   local lines = {
+   local lines = {}
+
+   local config_lines = M.build_config_report_lines(runtime_values)
+   for _, line in ipairs(config_lines) do
+      table.insert(lines, line)
+   end
+
+   local matrix_lines = M.build_prediction_matrix_lines(runtime_values)
+   for _, line in ipairs(matrix_lines) do
+      table.insert(lines, line)
+   end
+
+   local cap_lines = M.build_module_cap_report_lines(runtime_values)
+   for _, line in ipairs(cap_lines) do
+      table.insert(lines, line)
+   end
+
+   return lines
+end
+
+function M.build_config_report_lines(runtime_values)
+   local q1_ratio = runtime_values.q1_expected_effect ~= 0 and (runtime_values.q1_effect / runtime_values.q1_expected_effect) or 0
+   local q2_ratio = runtime_values.q2_expected_effect ~= 0 and (runtime_values.q2_effect / runtime_values.q2_expected_effect) or 0
+   local q3_ratio = runtime_values.q3_expected_effect ~= 0 and (runtime_values.q3_effect / runtime_values.q3_expected_effect) or 0
+
+   return {
       "cfg: B=" .. format_fixed(runtime_values.base_effect_quality)
          .. "  P[n/f/u/r/e]="
          .. table.concat({
@@ -247,8 +282,37 @@ function M.build_matrix_report_lines(runtime_values)
             format_fixed(runtime_values.q2_effect),
             format_fixed(runtime_values.q3_effect),
          }, "/"),
+      "runtime scaler: scale/step/exp="
+         .. table.concat({
+            format_fixed(runtime_values.module_quality_scale),
+            format_fixed(runtime_values.module_quality_base_step),
+            format_fixed(runtime_values.module_quality_exponent),
+         }, "/")
+         .. "  per-level-bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
+      "q-base[1/2/3]="
+         .. table.concat({
+            format_fixed(runtime_values.q1_base_effect),
+            format_fixed(runtime_values.q2_base_effect),
+            format_fixed(runtime_values.q3_base_effect),
+         }, "/"),
+      "q-expected[1/2/3]="
+         .. table.concat({
+            format_fixed(runtime_values.q1_expected_effect),
+            format_fixed(runtime_values.q2_expected_effect),
+            format_fixed(runtime_values.q3_expected_effect),
+         }, "/"),
+      "q-ratio actual/expected[1/2/3]="
+         .. table.concat({
+            format_fixed(q1_ratio),
+            format_fixed(q2_ratio),
+            format_fixed(q3_ratio),
+         }, "/"),
       "matrix values are percentages; Δv* are relative vs vanilla (fine↔vanilla normal)",
    }
+end
+
+function M.build_prediction_matrix_lines(runtime_values)
+   local lines = {}
 
    local vanilla_scenarios = {
       { label = "none", bonus = 0 },
@@ -258,7 +322,7 @@ function M.build_matrix_report_lines(runtime_values)
    }
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
-   local headers = { "mod", "N", "F", "U", "R", "E", "L", "ΔvF", "ΔvU", "ΔvR", "ΔvE", "ΔvL" }
+   local headers = { "mod", "N", "F", "ΔvF", "U", "ΔvU", "R", "ΔvR", "E", "ΔvE", "L", "ΔvL" }
    local all_rows = {}
    local rows_by_stage = {}
 
@@ -275,12 +339,13 @@ function M.build_matrix_report_lines(runtime_values)
 
    local widths = {}
    for i, header in ipairs(headers) do
-      widths[i] = #header
+      widths[i] = display_width(header)
    end
    for _, row in ipairs(all_rows) do
       for i, cell in ipairs(row) do
-         if #cell > widths[i] then
-            widths[i] = #cell
+         local cell_width = display_width(cell)
+         if cell_width > widths[i] then
+            widths[i] = cell_width
          end
       end
    end
@@ -291,11 +356,6 @@ function M.build_matrix_report_lines(runtime_values)
       for _, line in ipairs(table_lines) do
          table.insert(lines, line)
       end
-   end
-
-   local cap_lines = M.build_module_cap_report_lines(runtime_values)
-   for _, line in ipairs(cap_lines) do
-      table.insert(lines, line)
    end
 
    return lines
@@ -328,17 +388,27 @@ function M.build_module_cap_report_lines(runtime_values)
          level.name .. "(" .. tostring(level.level) .. ")",
       }
 
+      local none_chance = clamp01(runtime_values.base_effect_quality * runtime_values.normal_next_probability)
+      start_chance[i][0] = none_chance
+      table.insert(row, format_percent_cell(none_chance))
+
+      local tier_cells = {}
       for j, tier in ipairs(tiers) do
          local chance = compute_start_chance(runtime_values, tier.effect, level.level)
          start_chance[i][j] = chance
-         table.insert(row, format_percent_cell(chance))
+         tier_cells[j] = format_percent_cell(chance)
       end
 
+      local gain_none_to_q1 = start_chance[i][1] - start_chance[i][0]
       local gain_q1_to_q2 = start_chance[i][2] - start_chance[i][1]
       local gain_q2_to_q3 = start_chance[i][3] - start_chance[i][2]
 
-      table.insert(row, format_percent_cell(gain_q1_to_q2) .. ((gain_q1_to_q2 <= epsilon) and "*" or ""))
-      table.insert(row, format_percent_cell(gain_q2_to_q3) .. ((gain_q2_to_q3 <= epsilon) and "*" or ""))
+      table.insert(row, tier_cells[1])
+      table.insert(row, format_delta_cell(gain_none_to_q1) .. ((gain_none_to_q1 <= epsilon) and "*" or ""))
+      table.insert(row, tier_cells[2])
+      table.insert(row, format_delta_cell(gain_q1_to_q2) .. ((gain_q1_to_q2 <= epsilon) and "*" or ""))
+      table.insert(row, tier_cells[3])
+      table.insert(row, format_delta_cell(gain_q2_to_q3) .. ((gain_q2_to_q3 <= epsilon) and "*" or ""))
 
       if i == 1 then
          table.insert(row, "-")
@@ -354,14 +424,14 @@ function M.build_module_cap_report_lines(runtime_values)
             elseif gain <= epsilon then
                marker = "*"
             end
-            table.insert(row, format_percent_cell(gain) .. marker)
+            table.insert(row, format_delta_cell(gain) .. marker)
          end
       end
 
       table.insert(rows, row)
    end
 
-   local table_lines = build_table_lines({ "lvl", "Q1", "Q2", "Q3", "Δ12", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" }, rows)
+   local table_lines = build_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" }, rows)
    table_lines[1] = table_lines[1]
       .. "  -- cap analysis; bonus/level=" .. format_fixed(runtime_values.module_quality_per_level_bonus)
       .. "  (=same prototype level, *=capped)"
