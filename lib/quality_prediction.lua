@@ -46,7 +46,8 @@ end
 -- Locked levels are represented by setting continuation to 0 above the unlock ceiling,
 -- which absorbs all probability mass into the highest unlocked level.
 function M.compute_distribution(params)
-   local start_chance = clamp01((params.base_effect_quality + params.module_quality_bonus) * params.normal_next_probability)
+   local start_chance = clamp01((params.base_effect_quality + params.module_quality_bonus) *
+      params.normal_next_probability)
 
    local continue_from_fine = params.max_level >= 2 and params.fine_next_probability or 0
    local continue_from_uncommon = params.max_level >= 3 and params.uncommon_next_probability or 0
@@ -86,9 +87,9 @@ function M.build_matrix_inputs(runtime_values)
    }
 
    local research_stages = {
-      { label = "Game start", max_level = 1 },
-      { label = "Quality module (research)", max_level = 3 },
-      { label = "Epic quality (research)", max_level = 4 },
+      { label = "Game start",                   max_level = 1 },
+      { label = "Quality module (research)",    max_level = 3 },
+      { label = "Epic quality (research)",      max_level = 4 },
       { label = "Legendary quality (research)", max_level = 5 },
    }
 
@@ -201,8 +202,20 @@ local function make_vanilla_distribution(start_chance, max_level)
    return out
 end
 
-local function build_stage_matrix_rows(runtime_values, stage, module_scenarios, vanilla_scenarios)
+local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
    local rows = {}
+
+   local VANILLA_BASE_EFFECT = 0
+   local VANILLA_Q1_EFFECT = 0.1
+   local VANILLA_Q2_EFFECT = 0.2
+   local VANILLA_Q3_EFFECT = 0.25
+   local VANILLA_NORMAL_NEXT_PROBABILITY = 0.1
+   local vanilla_bonus_by_label = {
+      none = 0,
+      ["4xQ1"] = 4 * VANILLA_Q1_EFFECT,
+      ["4xQ2"] = 4 * VANILLA_Q2_EFFECT,
+      ["4xQ3"] = 4 * VANILLA_Q3_EFFECT,
+   }
 
    for i, scenario in ipairs(module_scenarios) do
       local distribution = M.compute_distribution({
@@ -216,22 +229,23 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios, 
          max_level = stage.max_level,
       })
 
-      local vanilla_start_chance = clamp01(vanilla_scenarios[i].bonus)
-      local vanilla = make_vanilla_distribution(vanilla_start_chance, stage.max_level)
+      local vanilla_module_bonus = vanilla_bonus_by_label[scenario.label] or 0
+      local vanilla_start_chance = clamp01((VANILLA_BASE_EFFECT + vanilla_module_bonus) * VANILLA_NORMAL_NEXT_PROBABILITY)
+      local vanilla_distribution = make_vanilla_distribution(vanilla_start_chance, stage.max_level)
 
       local row = {
          scenario.label,
          format_percent_cell(distribution.normal),
          format_percent_cell(distribution.fine),
-         format_relative_delta(distribution.fine, vanilla.normal),
+         format_relative_delta(distribution.fine, vanilla_distribution.normal),
          stage.max_level >= 3 and format_percent_cell(distribution.uncommon) or "-",
-         stage.max_level >= 3 and format_relative_delta(distribution.uncommon, vanilla.uncommon) or "-",
+         stage.max_level >= 3 and format_relative_delta(distribution.uncommon, vanilla_distribution.uncommon) or "-",
          stage.max_level >= 3 and format_percent_cell(distribution.rare) or "-",
-         stage.max_level >= 3 and format_relative_delta(distribution.rare, vanilla.rare) or "-",
+         stage.max_level >= 3 and format_relative_delta(distribution.rare, vanilla_distribution.rare) or "-",
          stage.max_level >= 4 and format_percent_cell(distribution.epic) or "-",
-         stage.max_level >= 4 and format_relative_delta(distribution.epic, vanilla.epic) or "-",
+         stage.max_level >= 4 and format_relative_delta(distribution.epic, vanilla_distribution.epic) or "-",
          stage.max_level >= 5 and format_percent_cell(distribution.legendary) or "-",
-         stage.max_level >= 5 and format_relative_delta(distribution.legendary, vanilla.legendary) or "-",
+         stage.max_level >= 5 and format_relative_delta(distribution.legendary, vanilla_distribution.legendary) or "-",
       }
 
       table.insert(rows, row)
@@ -262,64 +276,60 @@ function M.build_matrix_report_lines(runtime_values)
 end
 
 function M.build_config_report_lines(runtime_values)
-   local q1_ratio = runtime_values.q1_expected_effect ~= 0 and (runtime_values.q1_effect / runtime_values.q1_expected_effect) or 0
-   local q2_ratio = runtime_values.q2_expected_effect ~= 0 and (runtime_values.q2_effect / runtime_values.q2_expected_effect) or 0
-   local q3_ratio = runtime_values.q3_expected_effect ~= 0 and (runtime_values.q3_effect / runtime_values.q3_expected_effect) or 0
+   local q1_ratio = runtime_values.q1_expected_effect ~= 0 and
+       (runtime_values.q1_effect / runtime_values.q1_expected_effect) or 0
+   local q2_ratio = runtime_values.q2_expected_effect ~= 0 and
+       (runtime_values.q2_effect / runtime_values.q2_expected_effect) or 0
+   local q3_ratio = runtime_values.q3_expected_effect ~= 0 and
+       (runtime_values.q3_effect / runtime_values.q3_expected_effect) or 0
 
    return {
       "cfg: B=" .. format_fixed(runtime_values.base_effect_quality)
-         .. "  P[n/f/u/r/e]="
-         .. table.concat({
-            format_fixed(runtime_values.normal_next_probability),
-            format_fixed(runtime_values.fine_next_probability),
-            format_fixed(runtime_values.uncommon_next_probability),
-            format_fixed(runtime_values.rare_next_probability),
-            format_fixed(runtime_values.epic_next_probability),
-         }, "/")
-         .. "  Q[1/2/3]="
-         .. table.concat({
-            format_fixed(runtime_values.q1_effect),
-            format_fixed(runtime_values.q2_effect),
-            format_fixed(runtime_values.q3_effect),
-         }, "/"),
+      .. "  P[n/f/u/r/e]="
+      .. table.concat({
+         format_fixed(runtime_values.normal_next_probability),
+         format_fixed(runtime_values.fine_next_probability),
+         format_fixed(runtime_values.uncommon_next_probability),
+         format_fixed(runtime_values.rare_next_probability),
+         format_fixed(runtime_values.epic_next_probability),
+      }, "/")
+      .. "  Q[1/2/3]="
+      .. table.concat({
+         format_fixed(runtime_values.q1_effect),
+         format_fixed(runtime_values.q2_effect),
+         format_fixed(runtime_values.q3_effect),
+      }, "/"),
       "runtime scaler: scale/step/exp="
-         .. table.concat({
-            format_fixed(runtime_values.module_quality_scale),
-            format_fixed(runtime_values.module_quality_base_step),
-            format_fixed(runtime_values.module_quality_exponent),
-         }, "/")
-         .. "  per-level-bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
+      .. table.concat({
+         format_fixed(runtime_values.module_quality_scale),
+         format_fixed(runtime_values.module_quality_base_step),
+         format_fixed(runtime_values.module_quality_exponent),
+      }, "/")
+      .. "  per-level-bonus=" .. format_fixed(runtime_values.module_quality_per_level_bonus),
       "q-base[1/2/3]="
-         .. table.concat({
-            format_fixed(runtime_values.q1_base_effect),
-            format_fixed(runtime_values.q2_base_effect),
-            format_fixed(runtime_values.q3_base_effect),
-         }, "/"),
+      .. table.concat({
+         format_fixed(runtime_values.q1_base_effect),
+         format_fixed(runtime_values.q2_base_effect),
+         format_fixed(runtime_values.q3_base_effect),
+      }, "/"),
       "q-expected[1/2/3]="
-         .. table.concat({
-            format_fixed(runtime_values.q1_expected_effect),
-            format_fixed(runtime_values.q2_expected_effect),
-            format_fixed(runtime_values.q3_expected_effect),
-         }, "/"),
+      .. table.concat({
+         format_fixed(runtime_values.q1_expected_effect),
+         format_fixed(runtime_values.q2_expected_effect),
+         format_fixed(runtime_values.q3_expected_effect),
+      }, "/"),
       "q-ratio actual/expected[1/2/3]="
-         .. table.concat({
-            format_fixed(q1_ratio),
-            format_fixed(q2_ratio),
-            format_fixed(q3_ratio),
-         }, "/"),
-      "matrix values are percentages; Δv* are relative vs vanilla (fine↔vanilla normal)",
+      .. table.concat({
+         format_fixed(q1_ratio),
+         format_fixed(q2_ratio),
+         format_fixed(q3_ratio),
+      }, "/"),
+      "matrix values are percentages; Δv* are relative vs vanilla (base_effect=0, P[n/f/u/r/e]=0.1; F↔vanilla N)",
    }
 end
 
 function M.build_prediction_matrix_lines(runtime_values)
    local lines = {}
-
-   local vanilla_scenarios = {
-      { label = "none", bonus = 0 },
-      { label = "4xQ1", bonus = 4 * 0.1 },
-      { label = "4xQ2", bonus = 4 * 0.2 },
-      { label = "4xQ3", bonus = 4 * 0.25 },
-   }
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
    local headers = { "mod", "N", "F", "ΔvF", "U", "ΔvU", "R", "ΔvR", "E", "ΔvE", "L", "ΔvL" }
@@ -327,7 +337,7 @@ function M.build_prediction_matrix_lines(runtime_values)
    local rows_by_stage = {}
 
    for _, stage in ipairs(research_stages) do
-      local stage_rows = build_stage_matrix_rows(runtime_values, stage, module_scenarios, vanilla_scenarios)
+      local stage_rows = build_stage_matrix_rows(runtime_values, stage, module_scenarios)
       rows_by_stage[#rows_by_stage + 1] = {
          title = "[max=" .. tostring(stage.max_level) .. "] " .. stage.label,
          rows = stage_rows,
@@ -431,10 +441,11 @@ function M.build_module_cap_report_lines(runtime_values)
       table.insert(rows, row)
    end
 
-   local table_lines = build_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" }, rows)
+   local table_lines = build_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" },
+      rows)
    table_lines[1] = table_lines[1]
-      .. "  -- cap analysis; bonus/level=" .. format_fixed(runtime_values.module_quality_per_level_bonus)
-      .. "  (=same prototype level, *=capped)"
+       .. "  -- cap analysis; bonus/level=" .. format_fixed(runtime_values.module_quality_per_level_bonus)
+       .. "  (=same prototype level, *=capped)"
    for _, line in ipairs(table_lines) do
       table.insert(lines, line)
    end

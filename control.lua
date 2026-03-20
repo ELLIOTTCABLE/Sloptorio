@@ -61,6 +61,10 @@ local function read_runtime_values()
    local legendary = prototypes.quality.legendary
    table.insert(quality_levels, { name = "legendary", level = (legendary and legendary.level) or 5 })
 
+   local q1_val = (q1 and q1.module_effects and q1.module_effects.quality) or 0
+   local q2_val = (q2 and q2.module_effects and q2.module_effects.quality) or 0
+   local q3_val = (q3 and q3.module_effects and q3.module_effects.quality) or 0
+
    return {
       base_effect_quality = (base_effect and base_effect.quality) or 0,
       normal_next_probability = (normal and normal.next_probability) or 0,
@@ -68,9 +72,9 @@ local function read_runtime_values()
       uncommon_next_probability = (uncommon and uncommon.next_probability) or 0,
       rare_next_probability = (rare and rare.next_probability) or 0,
       epic_next_probability = (epic and epic.next_probability) or 0,
-      q1_effect = (q1 and q1.module_effects and q1.module_effects.quality) or 0,
-      q2_effect = (q2 and q2.module_effects and q2.module_effects.quality) or 0,
-      q3_effect = (q3 and q3.module_effects and q3.module_effects.quality) or 0,
+      q1_effect = q1_val,
+      q2_effect = q2_val,
+      q3_effect = q3_val,
       q1_base_effect = defaults.q1_base_effect,
       q2_base_effect = defaults.q2_base_effect,
       q3_base_effect = defaults.q3_base_effect,
