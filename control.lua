@@ -1,6 +1,7 @@
 local quality_prediction = require("lib.quality_prediction")
 local defaults = require("lib.tuning_defaults").values
 local shared = require("lib.shared").values
+local vanilla_slop_quality_name = shared.vanilla_quality_levels[1].name
 
 local function scale_quality_effect(effect, base_step, exponent, scale)
    if effect <= 0 then
@@ -14,7 +15,7 @@ end
 
 local function ensure_fine_unlocked()
    for _, force in pairs(game.forces) do
-      local tech = force.technologies["sloptorio-unlock-fine"]
+      local tech = force.technologies[shared.unlock_fine_technology_name]
       if tech then
          tech.researched = true
       end
@@ -36,7 +37,7 @@ local function report_line(message, player_index)
 end
 
 local function read_runtime_values()
-   local normal = prototypes.quality.normal
+   local slop = prototypes.quality[vanilla_slop_quality_name]
    local fine = prototypes.quality.fine
    local uncommon = prototypes.quality.uncommon
    local rare = prototypes.quality.rare
@@ -52,23 +53,13 @@ local function read_runtime_values()
    local module_quality_base_step = settings.startup["sloptorio-module-quality-base-step"].value
    local module_quality_exponent = settings.startup["sloptorio-module-quality-exponent"].value
 
-   local quality_levels = {
-      { name = "normal",   level = (normal and normal.level) or 0 },
-      { name = "fine",     level = (fine and fine.level) or 0 },
-      { name = "uncommon", level = (uncommon and uncommon.level) or 1 },
-      { name = "rare",     level = (rare and rare.level) or 2 },
-      { name = "epic",     level = (epic and epic.level) or 3 },
-   }
-   local legendary = prototypes.quality.legendary
-   table.insert(quality_levels, { name = "legendary", level = (legendary and legendary.level) or 5 })
-
    local q1_val = (q1 and q1.module_effects and q1.module_effects.quality) or 0
    local q2_val = (q2 and q2.module_effects and q2.module_effects.quality) or 0
    local q3_val = (q3 and q3.module_effects and q3.module_effects.quality) or 0
 
    return {
       base_effect_quality = (base_effect and base_effect.quality) or 0,
-      normal_next_probability = (normal and normal.next_probability) or 0,
+      slop_next_probability = (slop and slop.next_probability) or 0,
       fine_next_probability = (fine and fine.next_probability) or 0,
       uncommon_next_probability = (uncommon and uncommon.next_probability) or 0,
       rare_next_probability = (rare and rare.next_probability) or 0,
@@ -89,7 +80,7 @@ local function read_runtime_values()
       module_quality_base_step = module_quality_base_step,
       module_quality_exponent = module_quality_exponent,
       quality_default_multiplier_base = settings.startup["sloptorio-quality-default-multiplier-base"].value,
-      quality_levels = quality_levels,
+      sloptorio_quality_levels = shared.sloptorio_quality_levels,
    }
 end
 
@@ -163,7 +154,7 @@ script.on_event(defines.events.on_force_created, function(event)
    if not force then
       return
    end
-   local tech = force.technologies["sloptorio-unlock-fine"]
+   local tech = force.technologies[shared.unlock_fine_technology_name]
    if tech then
       tech.researched = true
    end

@@ -59,7 +59,7 @@ local function parse_args(argv)
 
    local cfg = {
       baseEffectQuality = num("baseEffectQuality", defaults.base_effect_quality),
-      normalNextProbability = num("normalNextProbability", defaults.normal_next_probability),
+      slopNextProbability = num("slopNextProbability", num("normalNextProbability", defaults.slop_next_probability)),
       fineNextProbability = num("fineNextProbability", defaults.fine_next_probability),
       uncommonNextProbability = num("uncommonNextProbability", defaults.uncommon_next_probability),
       rareNextProbability = num("rareNextProbability", defaults.rare_next_probability),
@@ -68,7 +68,7 @@ local function parse_args(argv)
       q2Effect = num("q2Effect", scale_quality_effect(shared.q2_base_effect)),
       q3Effect = num("q3Effect", scale_quality_effect(shared.q3_base_effect)),
       qualityDefaultMultiplierBase = num("qualityDefaultMultiplierBase", defaults.quality_default_multiplier_base),
-      targetNormal = args.targetNormal and num("targetNormal", 0.25) or nil,
+      targetSlop = (args.targetSlop or args.targetNormal) and num("targetSlop", num("targetNormal", 0.25)) or nil,
    }
 
    return cfg
@@ -77,15 +77,15 @@ end
 local function main()
    local cfg = parse_args(arg)
 
-   if cfg.targetNormal ~= nil then
-      local target_start_chance = clamp01(1 - cfg.targetNormal)
-      local denom = clamp01(cfg.normalNextProbability)
+   if cfg.targetSlop ~= nil then
+      local target_start_chance = clamp01(1 - cfg.targetSlop)
+      local denom = clamp01(cfg.slopNextProbability)
       cfg.baseEffectQuality = denom > 0 and (target_start_chance / denom) or 0
    end
 
    local runtime_values = {
       base_effect_quality = cfg.baseEffectQuality,
-      normal_next_probability = cfg.normalNextProbability,
+      slop_next_probability = cfg.slopNextProbability,
       fine_next_probability = cfg.fineNextProbability,
       uncommon_next_probability = cfg.uncommonNextProbability,
       rare_next_probability = cfg.rareNextProbability,
@@ -103,7 +103,7 @@ local function main()
       module_quality_base_step = defaults.module_quality_base_step,
       module_quality_exponent = defaults.module_quality_exponent,
       quality_default_multiplier_base = cfg.qualityDefaultMultiplierBase,
-      quality_levels = shared.quality_levels,
+      sloptorio_quality_levels = shared.sloptorio_quality_levels,
    }
 
    local lines = quality_prediction.build_matrix_report_lines(runtime_values)

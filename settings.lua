@@ -14,7 +14,7 @@ data:extend({
       type = "double-setting",
       name = "sloptorio-normal-next-probability",
       setting_type = "startup",
-      default_value = defaults.normal_next_probability,
+      default_value = defaults.slop_next_probability,
       minimum_value = 0,
       maximum_value = 1,
       order = "b",

@@ -15,7 +15,7 @@ end
 -- Inputs:
 --   base_effect_quality: machine baseline quality effect (B)
 --   module_quality_bonus: total module quality bonus for scenario (M)
---   normal_next_probability: normal.next_probability (Pn)
+--   slop_next_probability: normal.next_probability (Pn)
 --   fine_next_probability: fine.next_probability (Pf)
 --   uncommon_next_probability: uncommon.next_probability (Pu)
 --   rare_next_probability: rare.next_probability (Pr)
@@ -47,7 +47,7 @@ end
 -- which absorbs all probability mass into the highest unlocked level.
 function M.compute_distribution(params)
    local start_chance = clamp01((params.base_effect_quality + params.module_quality_bonus) *
-      params.normal_next_probability)
+      params.slop_next_probability)
 
    local continue_from_fine = params.max_level >= 2 and params.fine_next_probability or 0
    local continue_from_uncommon = params.max_level >= 3 and params.uncommon_next_probability or 0
@@ -132,7 +132,7 @@ local function compute_module_quality_bonus(runtime_values, base_tier_effect, mo
 end
 
 local function quality_level_by_name(runtime_values, quality_name, fallback)
-   for _, quality in ipairs(runtime_values.quality_levels or {}) do
+   for _, quality in ipairs(runtime_values.sloptorio_quality_levels or {}) do
       if quality.name == quality_name then
          return quality.level
       end
@@ -314,7 +314,7 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
       local distribution = M.compute_distribution({
          base_effect_quality = runtime_values.base_effect_quality,
          module_quality_bonus = scenario.bonus,
-         normal_next_probability = runtime_values.normal_next_probability,
+         slop_next_probability = runtime_values.slop_next_probability,
          fine_next_probability = runtime_values.fine_next_probability,
          uncommon_next_probability = runtime_values.uncommon_next_probability,
          rare_next_probability = runtime_values.rare_next_probability,
@@ -383,9 +383,9 @@ function M.build_config_report_lines(runtime_values)
 
    return {
       "cfg: B=" .. format_fixed(runtime_values.base_effect_quality)
-      .. "  P[n/f/u/r/e]="
+      .. "  P[s/f/u/r/e]="
       .. table.concat({
-         format_fixed(runtime_values.normal_next_probability),
+         format_fixed(runtime_values.slop_next_probability),
          format_fixed(runtime_values.fine_next_probability),
          format_fixed(runtime_values.uncommon_next_probability),
          format_fixed(runtime_values.rare_next_probability),
@@ -423,7 +423,7 @@ function M.build_config_report_lines(runtime_values)
          format_fixed(q2_ratio),
          format_fixed(q3_ratio),
       }, "/"),
-      "matrix values are percentages; Δv* are relative vs vanilla (base_effect=0, P[n/f/u/r/e]=0.1; F↔vanilla N)",
+         "matrix values are percentages; Δv* are relative vs vanilla (base_effect=0, vanilla P[n/u/r/e]=0.1; F↔vanilla N/slop)",
    }
 end
 
@@ -431,7 +431,7 @@ function M.build_prediction_matrix_lines(runtime_values)
    local lines = {}
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
-   local headers = { "mod", "N", "F", "ΔvF", "U", "ΔvU", "R", "ΔvR", "E", "ΔvE", "L", "ΔvL" }
+   local headers = { "mod", "S", "F", "ΔvF", "U", "ΔvU", "R", "ΔvR", "E", "ΔvE", "L", "ΔvL" }
    local all_rows = {}
    local rows_by_stage = {}
 
@@ -480,13 +480,13 @@ local function compute_start_chance(runtime_values, module_tier_effect, module_q
    local effective_tier_effect = quantize_quality_module_effect(module_tier_effect * quality_multiplier)
    local total_module_bonus = 4 * effective_tier_effect
    local combined = runtime_values.base_effect_quality + total_module_bonus
-   return clamp01(combined * runtime_values.normal_next_probability), total_module_bonus
+   return clamp01(combined * runtime_values.slop_next_probability), total_module_bonus
 end
 
 function M.build_module_cap_report_lines(runtime_values)
    local lines = {}
 
-   local levels = runtime_values.quality_levels
+   local levels = runtime_values.sloptorio_quality_levels
 
    local tiers = {
       { name = "Q1", effect = runtime_values.q1_effect },
@@ -503,7 +503,7 @@ function M.build_module_cap_report_lines(runtime_values)
          level.name .. "(" .. tostring(level.level) .. ")",
       }
 
-      local none_chance = clamp01(runtime_values.base_effect_quality * runtime_values.normal_next_probability)
+      local none_chance = clamp01(runtime_values.base_effect_quality * runtime_values.slop_next_probability)
       start_chance[i][0] = none_chance
       table.insert(row, format_percent_cell(none_chance))
 
