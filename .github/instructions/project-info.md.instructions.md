@@ -8,6 +8,7 @@ description: Description of the project and repeated agent mistakes
 
 ---
 
+- read the README to understand the project and inherent limitations
 - factorio quality goes normal/unc/rare ... this project introduces "fine" between normal/uncommon
 - NYI, but this project will _reduce_ the effect of "normal" and rename it "slop", making "fine" effectively the new normal. when comparing vanilla values and modded values, do not forget this, as it means you need to shift up-by-one so "fine" compares to "normal", "uncommon" compares to "uncommon", and so on. Be very careful and precise with the _context_ of a name, because they're ambiguous: when interfacing with the factorio API or reading documentation, "normal" means level=0; but we never otherwise use the word "normal" because it is ambiguous. stick to "slop" and "fine" where possible.
 - the `level` multiplier in vanilla (and here) skips a step from epic (level=3) to legendary (level=5). there is no level 4.
