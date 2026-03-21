@@ -5,6 +5,12 @@ local values = {
    q2_base_effect = 0.2,
    q3_base_effect = 0.25,
 
+   quality_factors = {
+      effect = 0.5,
+      cost = 1.5,
+      baseline = 1,
+   },
+
    unlock_fine_technology_name = "sloptorio-unlock-fine",
 
    vanilla_quality_levels = {

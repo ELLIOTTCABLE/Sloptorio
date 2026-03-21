@@ -20,6 +20,9 @@ for _, quality in pairs(data.raw.quality) do
    quality.default_multiplier = 1 + QUALITY_DEFAULT_MULTIPLIER_BASE * (quality.level or 0)
 end
 
+-- Keep slop as a fixed baseline penalty instead of deriving it from level=0 defaults.
+data.raw.quality[vanilla_slop_quality_name].default_multiplier = shared.quality_factors.effect
+
 local function scale_quality_effect(effect)
    if effect <= 0 then
       return effect
