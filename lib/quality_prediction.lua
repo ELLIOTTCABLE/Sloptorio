@@ -96,8 +96,8 @@ function M.build_matrix_inputs(runtime_values)
    return module_scenarios, research_stages
 end
 
-local function format_percent_cell(x)
-   return string.format("%.4f%%", x * 100)
+local function format_percent_cell(x, decimals)
+   return string.format("%." .. tostring(decimals or 4) .. "f%%", x * 100)
 end
 
 local function format_delta_cell(x)
@@ -174,6 +174,128 @@ end
 
 local function pad_right(value, width)
    return value .. string.rep(" ", width - display_width(value))
+end
+
+local function pad_left(value, width)
+   return string.rep(" ", width - display_width(value)) .. value
+end
+
+local function parse_decimal_percent_cell(value)
+   local sign, int_part, frac_part, percent_suffix, marker_suffix = value:match("^([+-]?)(%d+)%.(%d+)(%%)([*=]?)$")
+   if sign == nil then
+      sign, int_part, frac_part = value:match("^([+-]?)(%d+)%.(%d+)$")
+      percent_suffix = ""
+      marker_suffix = ""
+   end
+   if sign == nil then
+      return nil
+   end
+
+   return {
+      sign = sign,
+      int_part = int_part,
+      frac_part = frac_part,
+      suffix = percent_suffix .. marker_suffix,
+   }
+end
+
+local function build_matrix_table_lines(headers, rows)
+   local decimal_specs = {}
+   local column_count = #headers
+   for i = 2, column_count do
+      decimal_specs[i] = {
+         sign_width = 0,
+         int_width = 0,
+         frac_width = 0,
+         suffix_width = 0,
+      }
+   end
+
+   for _, row in ipairs(rows) do
+      for i = 2, column_count do
+         local parsed = parse_decimal_percent_cell(row[i])
+         if parsed then
+            if parsed.sign ~= "" then
+               decimal_specs[i].sign_width = 1
+            end
+            local int_width = display_width(parsed.int_part)
+            local frac_width = display_width(parsed.frac_part)
+            local suffix_width = display_width(parsed.suffix)
+            if int_width > decimal_specs[i].int_width then
+               decimal_specs[i].int_width = int_width
+            end
+            if frac_width > decimal_specs[i].frac_width then
+               decimal_specs[i].frac_width = frac_width
+            end
+            if suffix_width > decimal_specs[i].suffix_width then
+               decimal_specs[i].suffix_width = suffix_width
+            end
+         end
+      end
+   end
+
+   local rendered_rows = {}
+   for row_index, row in ipairs(rows) do
+      rendered_rows[row_index] = {}
+      for i, cell in ipairs(row) do
+         if i == 1 then
+            rendered_rows[row_index][i] = cell
+         else
+            local parsed = parse_decimal_percent_cell(cell)
+            local spec = decimal_specs[i]
+            if parsed and spec.int_width > 0 and spec.frac_width > 0 then
+               local sign_part = parsed.sign
+               if sign_part == "" and spec.sign_width > 0 then
+                  sign_part = " "
+               end
+               local int_part = string.rep(" ", spec.int_width - display_width(parsed.int_part)) .. parsed.int_part
+               local frac_part = parsed.frac_part .. string.rep(" ", spec.frac_width - display_width(parsed.frac_part))
+               local suffix_part = parsed.suffix .. string.rep(" ", spec.suffix_width - display_width(parsed.suffix))
+               rendered_rows[row_index][i] = sign_part .. int_part .. "." .. frac_part .. suffix_part
+            else
+               rendered_rows[row_index][i] = cell
+            end
+         end
+      end
+   end
+
+   local widths = {}
+   for i, header in ipairs(headers) do
+      widths[i] = display_width(header)
+   end
+   for _, row in ipairs(rendered_rows) do
+      for i, cell in ipairs(row) do
+         local cell_width = display_width(cell)
+         if cell_width > widths[i] then
+            widths[i] = cell_width
+         end
+      end
+   end
+
+   local lines = {}
+   local header_cells = {}
+   for i, header in ipairs(headers) do
+      if i == 1 then
+         header_cells[i] = pad_right(header, widths[i])
+      else
+         header_cells[i] = pad_left(header, widths[i])
+      end
+   end
+   table.insert(lines, table.concat(header_cells, "  "))
+
+   for _, row in ipairs(rendered_rows) do
+      local cells = {}
+      for i, cell in ipairs(row) do
+         if i == 1 then
+            cells[i] = pad_right(cell, widths[i])
+         else
+            cells[i] = pad_left(cell, widths[i])
+         end
+      end
+      table.insert(lines, table.concat(cells, "  "))
+   end
+
+   return lines
 end
 
 local function build_table_lines_with_widths(headers, rows, widths)
@@ -328,16 +450,16 @@ local function build_stage_matrix_rows(runtime_values, stage, module_scenarios)
 
       local row = {
          scenario.label,
-         format_percent_cell(distribution.normal),
-         format_percent_cell(distribution.fine),
+         format_percent_cell(distribution.normal, 5),
+         format_percent_cell(distribution.fine, 2),
          format_relative_delta(distribution.fine, vanilla_distribution.normal),
-         stage.max_level >= 3 and format_percent_cell(distribution.uncommon) or "-",
+         stage.max_level >= 3 and format_percent_cell(distribution.uncommon, 3) or "-",
          stage.max_level >= 3 and format_relative_delta(distribution.uncommon, vanilla_distribution.uncommon) or "-",
-         stage.max_level >= 3 and format_percent_cell(distribution.rare) or "-",
+         stage.max_level >= 3 and format_percent_cell(distribution.rare, 4) or "-",
          stage.max_level >= 3 and format_relative_delta(distribution.rare, vanilla_distribution.rare) or "-",
-         stage.max_level >= 4 and format_percent_cell(distribution.epic) or "-",
+         stage.max_level >= 4 and format_percent_cell(distribution.epic, 5) or "-",
          stage.max_level >= 4 and format_relative_delta(distribution.epic, vanilla_distribution.epic) or "-",
-         stage.max_level >= 5 and format_percent_cell(distribution.legendary) or "-",
+         stage.max_level >= 5 and format_percent_cell(distribution.legendary, 6) or "-",
          stage.max_level >= 5 and format_relative_delta(distribution.legendary, vanilla_distribution.legendary) or "-",
       }
 
@@ -423,7 +545,7 @@ function M.build_config_report_lines(runtime_values)
          format_fixed(q2_ratio),
          format_fixed(q3_ratio),
       }, "/"),
-         "matrix values are percentages; Δv* are relative vs vanilla (base_effect=0, vanilla P[n/u/r/e]=0.1; F↔vanilla N/slop)",
+      "matrix values are percentages; Δv* are relative vs vanilla (base_effect=0, vanilla P[n/u/r/e]=0.1; F↔vanilla N/slop)",
    }
 end
 
@@ -432,7 +554,6 @@ function M.build_prediction_matrix_lines(runtime_values)
 
    local module_scenarios, research_stages = M.build_matrix_inputs(runtime_values)
    local headers = { "mod", "S", "F", "ΔvF", "U", "ΔvU", "R", "ΔvR", "E", "ΔvE", "L", "ΔvL" }
-   local all_rows = {}
    local rows_by_stage = {}
 
    for _, stage in ipairs(research_stages) do
@@ -441,27 +562,11 @@ function M.build_prediction_matrix_lines(runtime_values)
          title = "[max=" .. tostring(stage.max_level) .. "] " .. stage.label,
          rows = stage_rows,
       }
-      for _, row in ipairs(stage_rows) do
-         all_rows[#all_rows + 1] = row
-      end
-   end
-
-   local widths = {}
-   for i, header in ipairs(headers) do
-      widths[i] = display_width(header)
-   end
-   for _, row in ipairs(all_rows) do
-      for i, cell in ipairs(row) do
-         local cell_width = display_width(cell)
-         if cell_width > widths[i] then
-            widths[i] = cell_width
-         end
-      end
    end
 
    for _, stage in ipairs(rows_by_stage) do
       table.insert(lines, stage.title)
-      local table_lines = build_table_lines_with_widths(headers, stage.rows, widths)
+      local table_lines = build_matrix_table_lines(headers, stage.rows)
       for _, line in ipairs(table_lines) do
          table.insert(lines, line)
       end
@@ -546,7 +651,7 @@ function M.build_module_cap_report_lines(runtime_values)
       table.insert(rows, row)
    end
 
-   local table_lines = build_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" },
+   local table_lines = build_matrix_table_lines({ "lvl", "none", "Q1", "Δn1", "Q2", "Δ12", "Q3", "Δ23", "ΔQ1", "ΔQ2", "ΔQ3" },
       rows)
    table.insert(lines,
       "bonus/level(default_multiplier)=" .. format_fixed(runtime_values.quality_default_multiplier_base)
