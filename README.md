@@ -1,9 +1,35 @@
 Sloptorio
 ---------
-
-An unfinished, half-AI-written Factorio mod that attempts to rebalance the gameplay of the optional ['quality'](https://wiki.factorio.com/Quality) system by introducing a new "Slop" tier of items, and causing them to be produced from game-start.
+An experimental Factorio mod that attempts to rebalance the gameplay of the optional ['quality'](https://wiki.factorio.com/Quality) system by introducing a new "Slop" tier of items, and causing them to be produced from game-start.
 
 Heavily inspired by [Inverted Quality](https://mods.factorio.com/mod/Inverted-Quality); but takes a slightly different approach, in hopes of retaining vanilla's positive "quality" tiers, as well.
+
+Yes, the name is a joke (I'm trying to maintain my skills by ensuring I know how the fuck to use AI models to write not-shitty code. It's a struggle.); but it's also a legitimate balance concern I have with the game, and is intended to become an actually-playable game mode.
+
+Game-design & goals
+===================
+At the moment, gameplay in Factorio 2.0 with 'quality' enabled gets a lot of flack (and IMO, rightly so).
+
+The dream of quality is, effectively, "Factorio, hard mode." Instead of byproduct-balancing, overproduction-handling, and slack-uptake being limited to issues you need to deal with in a few niche cases (for instance, Advanced Oil Production, where underconsuming heavy oil would traditonally "back up" and stop you producing the petroleum gas you were depending on), with quality turned on, *every single subfactory* in your game has an entirely new dimension and mechanic that you need to balance.
+
+There's two primary problems:
+
+1. In the vanilla balance, *actually building factories that use quality* is objectively inefficient. The default way players reach for those desirable "legendary-quality" pieces of equipment and buildings is to build a "recycler loop" at the end of a complex production chain. This is so *so* very much easier than actually dealing with "quality byproducts" in all of your factories (tons of diverting mechanisms, splitters, complexadditional belts/bots) that it feels wasteful, and borderline masochistic, to try to actually account for quality anywhere else in the production-chain. Losing out on the productivity from productivity-modules, wasting your input resources on a random smattering of quality-outputs that you don't even know how you're going to use yet ... it just can't compete.
+
+2. By the time you unlock quality (or more importantly, the *desirable* qualities, like epic/legendary), most of your factories are built - and even *if* you don't use a recycler loop, the opportunity-cost is just too high, to redesign all of the factories in your entire game around attempting to obtain, collate, and consume enough quality-byproducts to work your way up to legendaries.
+
+No. 1 is well-handled by other mods, like [No Quality Recycling](https://mods.factorio.com/mod/No-Qualitycycling) or [Recyclers Erase Quality](https://mods.factorio.com/mod/RecyclersEraseQuality).) But that actually exacerbates No. 2 - because you're not really left with any realistic way to obtain high-quality equipment or buildings. The best case is to start from scratch. Again, it's ... unfun.
+
+This mod is intended to be used in conjunction with one of those mods, and is focused on No. 2. I'm trying to balance the game such that the player is not rewarded for playing in un-fun ways. I can't make "paying attention to quality" *easier* (and I wouldn't want to? this is Factorio, fun is hard, hard is fun. That's the fucking point of the game, lol.) - so the correct rebalance is to make playing not-that-way *harder*.
+
+(Obviously, this is a mod; and it's not for everyone. I'm not suggesting the base game should be this way. The whole point is to make this style of play supported and encouraged by the mechanics, and make it feel less like you're making wasteful/stupid decisions *while* you're playing that way, for those of us who want to - I'm not saying you're a bad Factorio player if you don't want to deal with balancing byproducts!)
+
+Hence, my approach:
+
+1. **Produce quality-byproducts from game-start.** There's no longer an easy-way-out that it "feels wasteful" to avoid; every factory *has* to deal with them.
+2. **Nerf high-quality output chances.** Now that you're going to both A. be producing quality byproducts *constantly*, for hundreds of hours, while you're building everything and progressing through the game, instead of for a little while at the end of progression; and B. have an *entire megafactory* contributing to quality-production ... well, it could definitely go the opposite direction and make it too easy in a *different* way to get quality equipment.
+3. **Free up the module slot for more strategic choice.** There's still Quality Modules; but they're no longer necessary to get *some* quality outputs; they're more of a strategic choice vs. productivity (or speed) modules. They're still useful in chains where you want to ensure reasonable chances of rolling a legendary item; and they also contribute to reducing wastage on Slop-quality outputs; but they're no longer a boolean "definitely not" (for most of your factory) and "definitely" (for that one recycling-corner custom-built to chase legendary rolls.)
+
 
 Technical
 =========
