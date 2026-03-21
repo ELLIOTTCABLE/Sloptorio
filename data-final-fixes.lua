@@ -5,7 +5,6 @@ local function startup_double(name)
    return tonumber(settings.startup[name].value) or 0
 end
 
-data.raw.quality[vanilla_slop_quality_name].next = "fine"
 data.raw.quality[vanilla_slop_quality_name].next_probability = startup_double("sloptorio-normal-next-probability")
 data.raw.quality.fine.next_probability = startup_double("sloptorio-fine-next-probability")
 data.raw.quality.uncommon.next_probability = startup_double("sloptorio-uncommon-next-probability")
